@@ -2,7 +2,10 @@
 import dotenv from "dotenv";
 import winston from "winston";
 
-dotenv.config();
+// Only load .env in development
+if (process.env.NODE_ENV !== 'production') {
+  dotenv.config();
+}
 
 const logger = winston.createLogger({
   level: "info",
@@ -37,6 +40,16 @@ const poolConfig: PoolConfig = process.env.DATABASE_URL ? {
   idleTimeoutMillis: 30000, // how long a client is allowed to remain idle before being closed
   connectionTimeoutMillis: 2000, // how long to wait when connecting a new client
 };
+
+// Debug logging for Railway
+if (process.env.NODE_ENV === 'production') {
+  logger.info("Database configuration:", {
+    usingDatabaseUrl: !!process.env.DATABASE_URL,
+    nodeEnv: process.env.NODE_ENV,
+    hasDbHost: !!process.env.DB_HOST,
+    hasDbUser: !!process.env.DB_USER,
+  });
+}
 
 class Database {
   private pool: Pool;
