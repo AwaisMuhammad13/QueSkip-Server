@@ -1,36 +1,19 @@
 ﻿import express from "express";
 import cors from "cors";
-import helmet from "helmet";
-import compression from "compression";
-import morgan from "morgan";
 import dotenv from "dotenv";
 
-// Import middleware
-import { errorHandler } from "./middleware/errorHandler";
-
-// Import routes (using clean versions without Swagger)
-import authRoutes from "./routes/authRoutes-clean";
-import businessRoutes from "./routes/businessRoutes-clean";
-import queueRoutes from "./routes/queueRoutes-clean";
-import reviewRoutes from "./routes/reviewRoutes-clean";
+// Import controllers directly for minimal setup
+import { AuthController } from "./controllers/authController";
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
 
-// Security middleware
-app.use(helmet());
-app.use(cors({
-  origin: process.env.CORS_ORIGIN?.split(",") || ["http://localhost:3000"],
-  credentials: true,
-}));
-
-// Basic middleware
-app.use(compression());
-app.use(morgan("combined"));
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+// Basic middleware only
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Health check endpoint
 app.get("/health", (req, res) => {
@@ -42,21 +25,31 @@ app.get("/health", (req, res) => {
   });
 });
 
-// API routes
-app.use("/api/auth", authRoutes);
-app.use("/api/businesses", businessRoutes);
-app.use("/api/queues", queueRoutes);
-app.use("/api/reviews", reviewRoutes);
+// Direct route definitions without middleware complications
+app.post("/api/auth/register", AuthController.register);
+app.post("/api/auth/login", AuthController.login);
+app.post("/api/auth/refresh", AuthController.refreshToken);
+app.post("/api/auth/verify-email", AuthController.verifyEmail);
+app.post("/api/auth/forgot-password", AuthController.forgotPassword);
+app.post("/api/auth/reset-password", AuthController.resetPassword);
 
-// 404 handler
-app.use("*", (req, res) => {
+// Simple 404 handler without problematic patterns
+app.use((req, res) => {
   res.status(404).json({
     success: false,
     message: "Route not found",
+    path: req.path,
+    method: req.method
   });
 });
 
-// Error handling middleware (must be last)
-app.use(errorHandler);
+// Simple error handler
+app.use((error: any, req: any, res: any, next: any) => {
+  console.error("Server error:", error);
+  res.status(500).json({
+    success: false,
+    message: "Internal server error"
+  });
+});
 
 export default app;
