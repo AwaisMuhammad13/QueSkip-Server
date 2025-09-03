@@ -1,4 +1,4 @@
-﻿import express from "express";
+import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import compression from "compression";
@@ -8,11 +8,11 @@ import dotenv from "dotenv";
 // Import middleware
 import { errorHandler } from "./middleware/errorHandler";
 
-// Import routes (using clean versions without Swagger)
-import authRoutes from "./routes/authRoutes-clean";
-import businessRoutes from "./routes/businessRoutes-clean";
-import queueRoutes from "./routes/queueRoutes-clean";
-import reviewRoutes from "./routes/reviewRoutes-clean";
+// Import routes
+import authRoutes from "./routes/authRoutes";
+import businessRoutes from "./routes/businessRoutes";
+import queueRoutes from "./routes/queueRoutes";
+import reviewRoutes from "./routes/reviewRoutes";
 
 // Load environment variables
 dotenv.config();
