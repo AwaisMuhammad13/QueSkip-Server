@@ -47,7 +47,11 @@ class Database {
       client.release();
     } catch (error) {
       logger.error("Error connecting to PostgreSQL database:", error);
-      process.exit(1);
+      logger.warn("Server will continue without database connection. Some features may not work.");
+      // Don't exit in development, allow testing without DB
+      if (process.env.NODE_ENV === 'production') {
+        process.exit(1);
+      }
     }
   }
 
