@@ -319,22 +319,20 @@ export class BusinessController {
         return;
       }
 
+      // Simple distance calculation without PostGIS
       const query = `
-        SELECT id, name, address, latitude, longitude, category, images,
-               average_wait_time, current_queue_count,
-               ST_Distance(
-                 ST_SetSRID(ST_MakePoint(longitude, latitude), 4326),
-                 ST_SetSRID(ST_MakePoint($1, $2), 4326)
-               ) * 111319.9 as distance_meters,
-               (SELECT AVG(rating) FROM reviews WHERE business_id = businesses.id) as average_rating
-        FROM businesses 
-        WHERE is_active = true
-          AND ST_DWithin(
-            ST_SetSRID(ST_MakePoint(longitude, latitude), 4326),
-            ST_SetSRID(ST_MakePoint($1, $2), 4326),
-            $3 * 1000
-          )
-        ORDER BY distance_meters ASC
+        SELECT * FROM (
+          SELECT id, name, address, latitude, longitude, category, images,
+                 average_wait_time, current_queue_count,
+                 (6371 * acos(cos(radians($2)) * cos(radians(latitude)) * 
+                  cos(radians(longitude) - radians($1)) + sin(radians($2)) * 
+                  sin(radians(latitude)))) as distance_km,
+                 (SELECT AVG(rating) FROM reviews WHERE business_id = businesses.id) as average_rating
+          FROM businesses 
+          WHERE is_active = true
+        ) AS businesses_with_distance
+        WHERE distance_km <= $3
+        ORDER BY distance_km ASC
         LIMIT $4
       `;
 
@@ -351,7 +349,7 @@ export class BusinessController {
         averageWaitTime: business.average_wait_time,
         currentQueueCount: business.current_queue_count,
         averageRating: business.average_rating ? parseFloat(business.average_rating) : 0,
-        distance: Math.round(business.distance_meters),
+        distance: Math.round(business.distance_km * 1000), // Convert km to meters
       }));
 
       res.json(ResponseUtils.success(businesses));

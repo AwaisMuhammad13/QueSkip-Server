@@ -1,0 +1,154 @@
+### QueSkip API Testing - Complete Authentication Flow
+### 🎯 Testing based on Figma Mobile App Design
+### 📱 Screens: Sign In → Sign Up → Email Verification → Account Created
+
+@baseUrl = http://localhost:3000
+# @baseUrl = https://your-railway-deployment-url.up.railway.app
+
+### 🏥 STEP 0: Health Check
+GET {{baseUrl}}/health
+
+### 📝 STEP 1: Sign Up Flow (Figma Screen 2)
+### Testing: Full name, Email, Password, Confirm Password fields
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "firstName": "John",
+  "lastName": "Doe", 
+  "email": "john.doe.figma@example.com",
+  "password": "SecurePass123!",
+  "confirmPassword": "SecurePass123!"
+}
+
+### 📧 STEP 2: Email Verification (Figma Screen 3) 
+### Testing: 5-digit code verification
+### ⚠️ Replace the token with the one you get from Step 1 response
+POST {{baseUrl}}/api/auth/verify-email
+Content-Type: application/json
+
+{
+  "email": "john.doe.figma@example.com",
+  "token": "REPLACE_WITH_TOKEN_FROM_STEP_1"
+}
+
+### 🔐 STEP 3: Sign In Flow (Figma Screen 1)
+### Testing: Email and Password login
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "john.doe.figma@example.com",
+  "password": "SecurePass123!"
+}
+
+### 👤 STEP 4: Account Created - Profile Access (Figma Screen 4)
+### Testing: Authenticated user profile access
+### ⚠️ Replace the token with JWT from Step 3 response
+GET {{baseUrl}}/api/auth/profile
+Authorization: Bearer REPLACE_WITH_JWT_FROM_STEP_3
+
+### 4. TEST WITH DIFFERENT USER
+### Another user for testing
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "firstName": "Jane",
+  "lastName": "Smith",
+  "email": "jane.smith@example.com", 
+  "password": "SecurePass456!",
+  "confirmPassword": "SecurePass456!"
+}
+
+### 5. FORGOT PASSWORD FLOW
+POST {{baseUrl}}/api/auth/forgot-password
+Content-Type: application/json
+
+{
+  "email": "john.doe@example.com"
+}
+
+### 6. RESET PASSWORD
+### Replace 'your-reset-token' with actual token
+POST {{baseUrl}}/api/auth/reset-password
+Content-Type: application/json
+
+{
+  "token": "your-reset-token",
+  "newPassword": "NewPassword789!",
+  "confirmPassword": "NewPassword789!"
+}
+
+### 7. PROTECTED ROUTE TEST
+### First get JWT token from login, then use it here
+### Replace 'your-jwt-token' with actual token from login response
+GET {{baseUrl}}/api/auth/profile
+Authorization: Bearer your-jwt-token
+
+### 8. REFRESH TOKEN
+POST {{baseUrl}}/api/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "your-refresh-token"
+}
+
+### 9. LOGOUT
+POST {{baseUrl}}/api/auth/logout
+Authorization: Bearer your-jwt-token
+Content-Type: application/json
+
+{
+  "refreshToken": "your-refresh-token"
+}
+
+### 10. TEST BUSINESS ENDPOINTS (if user has business features)
+GET {{baseUrl}}/api/business/search?lat=40.7128&lng=-74.0060&radius=5000
+Authorization: Bearer your-jwt-token
+
+### 11. TEST QUEUE ENDPOINTS
+GET {{baseUrl}}/api/queue/my-queues
+Authorization: Bearer your-jwt-token
+
+### 12. TEST REVIEW ENDPOINTS  
+GET {{baseUrl}}/api/reviews/business/some-business-id
+Authorization: Bearer your-jwt-token
+
+### === ERROR TESTING ===
+
+### Test invalid email format
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "firstName": "Test",
+  "lastName": "User",
+  "email": "invalid-email",
+  "password": "Password123!",
+  "confirmPassword": "Password123!"
+}
+
+### Test password mismatch
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "firstName": "Test", 
+  "lastName": "User",
+  "email": "test@example.com",
+  "password": "Password123!",
+  "confirmPassword": "DifferentPassword!"
+}
+
+### Test weak password
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "firstName": "Test",
+  "lastName": "User", 
+  "email": "test2@example.com",
+  "password": "123",
+  "confirmPassword": "123"
+}

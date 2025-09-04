@@ -2,8 +2,13 @@
 import cors from "cors";
 import dotenv from "dotenv";
 
-// Import controllers directly for minimal setup
-import { AuthController } from "./controllers/authController";
+// Import route modules
+import authRoutes from "./routes/authRoutes-clean";
+import businessRoutes from "./routes/businessRoutes-clean";
+import queueRoutes from "./routes/queueRoutes-clean";
+import reviewRoutes from "./routes/reviewRoutes-clean";
+import subscriptionRoutes from "./routes/subscriptionRoutes";
+import userRoutes from "./routes/userRoutes";
 
 // Load environment variables
 dotenv.config();
@@ -25,13 +30,13 @@ app.get("/health", (req, res) => {
   });
 });
 
-// Direct route definitions without middleware complications
-app.post("/api/auth/register", AuthController.register);
-app.post("/api/auth/login", AuthController.login);
-app.post("/api/auth/refresh", AuthController.refreshToken);
-app.post("/api/auth/verify-email", AuthController.verifyEmail);
-app.post("/api/auth/forgot-password", AuthController.forgotPassword);
-app.post("/api/auth/reset-password", AuthController.resetPassword);
+// API routes
+app.use("/api/auth", authRoutes);
+app.use("/api/businesses", businessRoutes);
+app.use("/api/queues", queueRoutes);
+app.use("/api/reviews", reviewRoutes);
+app.use("/api/subscriptions", subscriptionRoutes);
+app.use("/api/users", userRoutes);
 
 // Simple 404 handler without problematic patterns
 app.use((req, res) => {

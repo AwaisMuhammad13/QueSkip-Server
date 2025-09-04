@@ -28,4 +28,12 @@ router.get("/:queueId", authenticateToken, QueueController.getQueueById);
 // Update queue notes
 router.put("/:queueId/notes", authenticateToken, QueueController.updateQueueNotes);
 
+// Mobile-specific endpoints
+
+// Get queue statistics for a business
+router.get("/business/:businessId/stats", QueueController.getQueueStats);
+
+// Get wait time estimate for joining a queue
+router.get("/business/:businessId/wait-estimate", QueueController.getWaitTimeEstimate);
+
 export default router;

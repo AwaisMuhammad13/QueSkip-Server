@@ -419,4 +419,112 @@ export class QueueController {
       res.status(500).json(ResponseUtils.error("Failed to update queue notes"));
     }
   }
+
+  /**
+   * Get queue statistics for a business (mobile analytics)
+   */
+  static async getQueueStats(req: Request, res: Response): Promise<void> {
+    try {
+      const { businessId } = req.params;
+
+      if (!ValidationUtils.isValidUUID(businessId)) {
+        res.status(400).json(ResponseUtils.error("Invalid business ID"));
+        return;
+      }
+
+      // Get current queue stats
+      const currentStatsResult = await database.query(
+        `SELECT 
+           COUNT(*) as current_queue_length,
+           AVG(estimated_wait_time) as average_wait_time,
+           MIN(position) as next_position,
+           MAX(position) as last_position
+         FROM queues 
+         WHERE business_id = $1 AND status = 'waiting'`,
+        [businessId]
+      );
+
+      // Get today's stats
+      const todayStatsResult = await database.query(
+        `SELECT 
+           COUNT(*) as total_served_today,
+           AVG(EXTRACT(EPOCH FROM (completed_at - joined_at))/60) as avg_actual_wait_time
+         FROM queues 
+         WHERE business_id = $1 AND status = 'completed' 
+           AND DATE(completed_at) = CURRENT_DATE`,
+        [businessId]
+      );
+
+      const currentStats = currentStatsResult.rows[0];
+      const todayStats = todayStatsResult.rows[0];
+
+      res.json(ResponseUtils.success({
+        current: {
+          queueLength: parseInt(currentStats.current_queue_length),
+          averageWaitTime: Math.round(parseFloat(currentStats.average_wait_time) || 0),
+          nextPosition: parseInt(currentStats.next_position) || 1,
+          lastPosition: parseInt(currentStats.last_position) || 0
+        },
+        today: {
+          totalServed: parseInt(todayStats.total_served_today),
+          averageActualWaitTime: Math.round(parseFloat(todayStats.avg_actual_wait_time) || 0)
+        }
+      }));
+
+    } catch (error) {
+      logger.error("Get queue stats error:", error);
+      res.status(500).json(ResponseUtils.error("Failed to get queue statistics"));
+    }
+  }
+
+  /**
+   * Estimate wait time for joining queue now
+   */
+  static async getWaitTimeEstimate(req: Request, res: Response): Promise<void> {
+    try {
+      const { businessId } = req.params;
+
+      if (!ValidationUtils.isValidUUID(businessId)) {
+        res.status(400).json(ResponseUtils.error("Invalid business ID"));
+        return;
+      }
+
+      // Get business info and current queue
+      const businessResult = await database.query(
+        `SELECT b.average_wait_time, b.current_queue_count,
+                COUNT(q.id) as actual_queue_count
+         FROM businesses b
+         LEFT JOIN queues q ON b.id = q.business_id AND q.status = 'waiting'
+         WHERE b.id = $1 AND b.is_active = true
+         GROUP BY b.id, b.average_wait_time, b.current_queue_count`,
+        [businessId]
+      );
+
+      if (businessResult.rows.length === 0) {
+        res.status(404).json(ResponseUtils.error("Business not found"));
+        return;
+      }
+
+      const business = businessResult.rows[0];
+      const queueLength = parseInt(business.actual_queue_count);
+      const baseWaitTime = business.average_wait_time || 15; // Default 15 minutes
+
+      // Calculate estimated wait time based on queue position
+      const estimatedWaitTime = Math.max(queueLength * baseWaitTime, 5); // Minimum 5 minutes
+      const estimatedCallTime = new Date();
+      estimatedCallTime.setMinutes(estimatedCallTime.getMinutes() + estimatedWaitTime);
+
+      res.json(ResponseUtils.success({
+        queueLength,
+        estimatedWaitTime,
+        estimatedCallTime: estimatedCallTime.toISOString(),
+        nextPosition: queueLength + 1,
+        baseWaitTimePerPerson: baseWaitTime
+      }));
+
+    } catch (error) {
+      logger.error("Get wait time estimate error:", error);
+      res.status(500).json(ResponseUtils.error("Failed to get wait time estimate"));
+    }
+  }
 }
