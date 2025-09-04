@@ -2,10 +2,8 @@
 import dotenv from "dotenv";
 import winston from "winston";
 
-// Only load .env in development
-if (process.env.NODE_ENV !== 'production') {
-  dotenv.config();
-}
+// Load .env file - Railway might need this for some deployments
+dotenv.config();
 
 const logger = winston.createLogger({
   level: "info",
@@ -25,31 +23,32 @@ const logger = winston.createLogger({
 
 const poolConfig: PoolConfig = process.env.DATABASE_URL ? {
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL.includes('railway') ? { rejectUnauthorized: false } : false,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
   max: 20,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000,
+  connectionTimeoutMillis: 20000, // Increased timeout for Railway
+  query_timeout: 30000, // Added query timeout
 } : {
   user: process.env.DB_USER,
   host: process.env.DB_HOST,
   database: process.env.DB_NAME,
   password: process.env.DB_PASSWORD,
   port: parseInt(process.env.DB_PORT || "5432"),
-  ssl: process.env.DB_HOST?.includes('railway') ? { rejectUnauthorized: false } : false,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
   max: 20, // maximum number of clients in the pool
   idleTimeoutMillis: 30000, // how long a client is allowed to remain idle before being closed
-  connectionTimeoutMillis: 10000, // how long to wait when connecting a new client
+  connectionTimeoutMillis: 20000, // how long to wait when connecting a new client
+  query_timeout: 30000, // Added query timeout
 };
 
 // Debug logging for Railway
-if (process.env.NODE_ENV === 'production') {
-  logger.info("Database configuration:", {
-    usingDatabaseUrl: !!process.env.DATABASE_URL,
-    nodeEnv: process.env.NODE_ENV,
-    hasDbHost: !!process.env.DB_HOST,
-    hasDbUser: !!process.env.DB_USER,
-  });
-}
+logger.info("Database configuration:", {
+  usingDatabaseUrl: !!process.env.DATABASE_URL,
+  nodeEnv: process.env.NODE_ENV,
+  hasDbHost: !!process.env.DB_HOST,
+  hasDbUser: !!process.env.DB_USER,
+  databaseUrlLength: process.env.DATABASE_URL?.length || 0,
+});
 
 class Database {
   private pool: Pool;
@@ -61,14 +60,29 @@ class Database {
 
   private async initializeDatabase(): Promise<void> {
     try {
-      const client = await this.pool.connect();
-      logger.info("Connected to PostgreSQL database successfully");
-      client.release();
+      // Retry connection logic for Railway
+      let retries = 3;
+      let client;
+      
+      while (retries > 0) {
+        try {
+          client = await this.pool.connect();
+          logger.info("Connected to PostgreSQL database successfully");
+          client.release();
+          return;
+        } catch (error) {
+          retries--;
+          if (retries === 0) throw error;
+          
+          logger.warn(`Database connection attempt failed, retrying... (${retries} attempts left)`);
+          await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+        }
+      }
     } catch (error) {
       logger.error("Error connecting to PostgreSQL database:", error);
       logger.warn("Server will continue without database connection. Some features may not work.");
-      // Don't exit in development, allow testing without DB
-      if (process.env.NODE_ENV === 'production') {
+      // Don't exit in production for Railway - let it restart
+      if (process.env.NODE_ENV !== 'production') {
         process.exit(1);
       }
     }

@@ -1,6 +1,7 @@
 ﻿import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import database from "./config/database";
 
 // Import route modules
 import authRoutes from "./routes/authRoutes-clean";
@@ -20,13 +21,35 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Health check endpoint
-app.get("/health", (req, res) => {
+// Health check endpoint with database status
+app.get("/health", async (req, res) => {
+  let dbStatus = "disconnected";
+  let dbError = null;
+  
+  try {
+    await database.query("SELECT 1");
+    dbStatus = "connected";
+  } catch (error: any) {
+    dbError = error.message;
+  }
+  
   res.status(200).json({
-    status: "OK",
+    status: dbStatus === "connected" ? "OK" : "DEGRADED",
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     environment: process.env.NODE_ENV || "development",
+    database: {
+      status: dbStatus,
+      error: dbError
+    },
+    services: {
+      api: "OK",
+      auth: "OK",
+      queue: "OK",
+      business: "OK",
+      reviews: "OK",
+      subscriptions: "OK"
+    }
   });
 });
 

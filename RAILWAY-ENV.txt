@@ -1,0 +1,30 @@
+# Railway Environment Variables
+# Set these in Railway Dashboard -> Variables
+
+NODE_ENV=production
+PORT=3000
+
+# JWT Secrets - Use these exact values in Railway
+JWT_SECRET=QueSkip_PROD_JWT_2024_a9f8e7d6c5b4a3f2e1d9c8b7a6f5e4d3c2b1a9f8e7d6c5b4
+JWT_REFRESH_SECRET=QueSkip_PROD_REFRESH_2024_z9y8x7w6v5u4t3s2r1q9p8o7n6m5l4k3j2i1h9g8f7e6d5c4
+JWT_EXPIRES_IN=7d
+JWT_REFRESH_EXPIRES_IN=30d
+
+# Security
+BCRYPT_ROUNDS=12
+
+# CORS - Update with your actual domains
+CORS_ORIGIN=*
+
+# Rate Limiting
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=100
+
+# Database - Railway will auto-provide DATABASE_URL
+# You can also manually set:
+DATABASE_URL=postgresql://postgres:wTazMhgEfAiBgfkMIWADbrvwccnHPiiQ@gondola.proxy.rlwy.net:57057/railway
+DB_HOST=gondola.proxy.rlwy.net
+DB_PORT=57057
+DB_NAME=railway
+DB_USER=postgres
+DB_PASSWORD=wTazMhgEfAiBgfkMIWADbrvwccnHPiiQ
